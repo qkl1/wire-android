@@ -166,9 +166,18 @@ class MainActivity extends BaseActivity
   }
 
   def startFirstFragment(): Unit = {
-    verbose("startFirstFragment")
+    verbose(s"startFirstFragment, intent: ${getIntent.log}")
+
+    val ssoToken = returning(getIntent.ssoToken) { token =>
+      if (token.isDefined) getIntent.clearSSOToken()
+    }
+
     def openSignUpPage(): Unit = {
-      startActivity(new Intent(getApplicationContext, classOf[AppEntryActivity]))
+      startActivity(
+        returning(new Intent(getApplicationContext, classOf[AppEntryActivity])){ intent =>
+          ssoToken.foreach(intent.putExtra(SSOIntent.SSOLinkExtra, _))
+        }
+      )
       finish()
     }
 
@@ -186,18 +195,20 @@ class MainActivity extends BaseActivity
               pendingEmail <- z.userPrefs(PendingEmail).apply()
               ssoLogin     <- accountsService.activeAccount.map(_.exists(_.ssoId.isDefined)).head
             } yield {
-              val (f, t) =
-                if (ssoLogin)  {
-                  if (self.handle.isEmpty)                  (SetHandleFragment(),                          SetHandleFragment.Tag)
-                  else                                      (new MainPhoneFragment,                        MainPhoneFragment.Tag)
-                }
-                else if (self.email.isDefined && pendingPw) (SetOrRequestPasswordFragment(self.email.get), SetOrRequestPasswordFragment.Tag)
-                else if (pendingEmail.isDefined)            (VerifyEmailFragment(pendingEmail.get),        VerifyEmailFragment.Tag)
-                else if (self.email.isEmpty && isLogin && isNewClient && self.phone.isDefined)
-                                                            (AddEmailFragment(),                           AddEmailFragment.Tag)
-                else if (self.handle.isEmpty)               (SetHandleFragment(),                          SetHandleFragment.Tag)
-                else                                        (new MainPhoneFragment,                        MainPhoneFragment.Tag)
-              replaceMainFragment(f, t, addToBackStack = false)
+              if (ssoToken.isDefined) openSignUpPage() else {
+                val (f, t) =
+                  if (ssoLogin) {
+                    if (self.handle.isEmpty) (SetHandleFragment(), SetHandleFragment.Tag)
+                    else (new MainPhoneFragment, MainPhoneFragment.Tag)
+                  }
+                  else if (self.email.isDefined && pendingPw) (SetOrRequestPasswordFragment(self.email.get), SetOrRequestPasswordFragment.Tag)
+                  else if (pendingEmail.isDefined) (VerifyEmailFragment(pendingEmail.get), VerifyEmailFragment.Tag)
+                  else if (self.email.isEmpty && isLogin && isNewClient && self.phone.isDefined)
+                    (AddEmailFragment(), AddEmailFragment.Tag)
+                  else if (self.handle.isEmpty) (SetHandleFragment(), SetHandleFragment.Tag)
+                  else (new MainPhoneFragment, MainPhoneFragment.Tag)
+                replaceMainFragment(f, t, addToBackStack = false)
+              }
             }
 
           case Right(LimitReached) =>
@@ -385,7 +396,6 @@ class MainActivity extends BaseActivity
           clearIntent()
         case _ => error(s"Unknown page: $page - ignoring intent")
       }
-
       case _ => setIntent(intent)
     }
   }

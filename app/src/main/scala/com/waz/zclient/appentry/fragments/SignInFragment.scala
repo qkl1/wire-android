@@ -234,6 +234,7 @@ class SignInFragment extends SSOFragment
   }
 
   override def onCreate(savedInstanceState: Bundle): Unit = {
+    _ssoLink = getStringArg(SSOFragment.SSOLinkArg)
     super.onCreate(savedInstanceState)
 
     val transition = if (SDK_INT >= KITKAT) Option(new AutoTransition2()) else None
@@ -415,6 +416,10 @@ class SignInFragment extends SSOFragment
 
   override protected def onSSOConfirm(code: String): Unit = activity.showFragment(SSOWebViewFragment.newInstance(code.toString), SSOWebViewFragment.Tag)
 
+  private var _ssoLink: Option[String] = _
+  override protected def ssoLink: Option[String] = _ssoLink
+  override protected def clearSSOLink(): Unit = _ssoLink = None
+
   def activity = getActivity.asInstanceOf[AppEntryActivity]
 }
 
@@ -424,9 +429,10 @@ object SignInFragment {
   val InputTypeArg = "INPUT_TYPE"
   val OnlyLoginArg = "ONLY_LOGIN"
 
+
   def apply() = new SignInFragment
 
-  def apply(signInMethod: SignInMethod): SignInFragment = {
+  def apply(signInMethod: SignInMethod): SignInFragment =
     returning(new SignInFragment()) {
       _.setArguments(returning(new Bundle) { b =>
           b.putString(SignTypeArg, signInMethod.signType.str)
@@ -434,7 +440,13 @@ object SignInFragment {
           b.putBoolean(OnlyLoginArg, signInMethod.onlyLogin)
       })
     }
-  }
+
+  def apply(ssoToken: String): SignInFragment =
+    returning(new SignInFragment()) {
+      _.setArguments(returning(new Bundle) {
+        _.putString(SSOFragment.SSOLinkArg, ssoToken)
+      })
+    }
 
   val Tag = logTagFor[SignInFragment]
 
@@ -451,6 +463,7 @@ object SignInFragment {
   object Phone extends InputType { override val str = "Phone" }
 
   case class SignInMethod(signType: SignType, inputType: InputType = Email, onlyLogin: Boolean = false)
+
   val SignInOnlyLogin = SignInMethod(Login, Email, onlyLogin = true)
 }
 

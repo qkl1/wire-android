@@ -40,6 +40,7 @@ import com.waz.zclient.ui.text.{GlyphTextView, TypefaceTextView}
 import com.waz.zclient.ui.utils.KeyboardUtils
 import com.waz.zclient.utils.{RichView, ViewUtils}
 import com.waz.zclient.views.LoadingIndicatorView
+import com.waz.zclient.Intents._
 
 import scala.collection.JavaConverters._
 
@@ -111,15 +112,21 @@ class AppEntryActivity extends BaseActivity {
 
     closeButton.onClick(abortAddAccount())
 
+
     withFragmentOpt(AppLaunchFragment.Tag) {
       case Some(_) =>
       case None =>
-        Option(getIntent.getExtras).map(_.getInt(MethodArg)) match {
-          case Some(LoginArgVal) => showFragment(SignInFragment(), SignInFragment.Tag, animated = false)
-          case Some(CreateTeamArgVal) => showFragment(TeamNameFragment(), TeamNameFragment.Tag, animated = false)
-          case _ if !BuildConfig.ACCOUNT_CREATION_ENABLED =>
-            showFragment(SignInFragment(SignInFragment.SignInOnlyLogin), SignInFragment.Tag, animated = false)
-          case _ => showFragment(AppLaunchFragment(), AppLaunchFragment.Tag, animated = false)
+        val extras = Option(getIntent.getExtras)
+        extras.map(_.getString(SSOIntent.SSOLinkExtra)) match {
+          case Some(token) => showFragment(SignInFragment(token), SignInFragment.Tag, animated = false)
+          case _ =>
+            extras.map(_.getInt(MethodArg)) match {
+              case Some(LoginArgVal) => showFragment(SignInFragment(), SignInFragment.Tag, animated = false)
+              case Some(CreateTeamArgVal) => showFragment(TeamNameFragment(), TeamNameFragment.Tag, animated = false)
+              case _ if !BuildConfig.ACCOUNT_CREATION_ENABLED =>
+                showFragment(SignInFragment(SignInFragment.SignInOnlyLogin), SignInFragment.Tag, animated = false)
+              case _ => showFragment(AppLaunchFragment(), AppLaunchFragment.Tag, animated = false)
+            }
       }
     }
 

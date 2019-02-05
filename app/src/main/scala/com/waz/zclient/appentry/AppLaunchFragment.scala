@@ -55,4 +55,8 @@ class AppLaunchFragment extends SSOFragment {
   }
 
   override protected def onSSOConfirm(code: String): Unit = activity.showFragment(SSOWebViewFragment.newInstance(code.toString), SSOWebViewFragment.Tag)
+
+  override protected def ssoLink: Option[String] = None
+
+  override protected def clearSSOLink(): Unit = {}
 }

@@ -26,19 +26,19 @@ import com.waz.zclient.preferences.PreferencesActivity
 
 object Intents {
 
-  private lazy val FromNotificationExtra = "from_notification"
-  private lazy val FromSharingExtra      = "from_sharing"
-  private lazy val StartCallExtra        = "start_call"
-  private lazy val AccountIdExtra        = "account_id"
-  private lazy val ConvIdExtra           = "conv_id"
+  private val FromNotificationExtra = "from_notification"
+  private val FromSharingExtra      = "from_sharing"
+  private val StartCallExtra        = "start_call"
+  private val AccountIdExtra        = "account_id"
+  private val ConvIdExtra           = "conv_id"
 
-  private lazy val OpenPageExtra         = "open_page"
+  private val OpenPageExtra         = "open_page"
 
   type Page = String
   object Page {
-    lazy val Settings = "Settings"
-    lazy val Advanced = "Advanced"
-    lazy val Devices  = "Devices"
+    val Settings = "Settings"
+    val Advanced = "Advanced"
+    val Devices  = "Devices"
   }
 
   def CallIntent(userId: UserId, convId: ConvId, requestCode: Int = System.currentTimeMillis().toInt)(implicit context: Context) =
@@ -108,7 +108,12 @@ object Intents {
     }
 
     def log =
-      s"""NofiticationIntent:
+      s"""Intent:
+          |action:           ${intent.getAction}
+          |flags:            ${intent.getFlags}
+          |extras:           ${intent.getExtras}
+          |categories:       ${intent.getCategories}
+          |data:             ${intent.getDataString}
           |FromNotification: $fromNotification
           |FromSharing:      $fromSharing
           |Start call:       $startCall
@@ -116,6 +121,16 @@ object Intents {
           |Conv id:          $convId
           |Page:             $page
         """.stripMargin
+
+    def ssoToken: Option[String] = Option(intent.getDataString).flatMap { str =>
+      import SSOIntent._
+      val prefix = s"$Scheme://$Host/$Prefix"
+      if (str.startsWith(prefix) && str.length > prefix.length)
+        Some(str.substring(s"$Scheme://$Host/".length))
+      else None
+    }
+
+    def clearSSOToken(): Unit = intent.setData(null)
   }
 
   object NotificationIntent {
@@ -132,5 +147,12 @@ object Intents {
     def unapply(i: Intent): Option[Page] = i.page
   }
 
+  object SSOIntent {
+    val Scheme = "wire"
+    val Host = "start-sso"
+    val Prefix = "wire-"
+
+    val SSOLinkExtra = "SSO_LINK_EXTRA"
+  }
 
 }
